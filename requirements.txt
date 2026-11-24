@@ -1,0 +1,17 @@
+fastapi
+uvicorn[standard]
+pydantic-settings
+python-dotenv
+
+langgraph
+langchain-core
+langchain-groq
+
+pinecone
+sentence-transformers
+tavily-python
+
+pypdf
+python-docx
+
+pytest
