@@ -1,0 +1,21 @@
+# Secrets
+.env
+
+# Python
+venv/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Local data
+data/audit.db
+data/hr_documents/*
+!data/hr_documents/.gitkeep
+
+# Tooling
+.idea/
+.vscode/
+
+# Model cache
+.cache/
