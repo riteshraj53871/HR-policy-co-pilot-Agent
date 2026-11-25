@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     generator_model: str = "llama-3.3-70b-versatile"
 
     # Agent behavior
-    top_k: int = 5
+    top_k: int = 3
     kb_score_threshold: float = 0.55
     max_retries: int = 2
 
