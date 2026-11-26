@@ -1,10 +1,14 @@
 """One function per graph node. Each takes the state and returns only the fields it changes."""
 
+import re
+from datetime import date
+
 from app.config import get_settings
 from app.graph import prompts
 from app.graph.edges import kb_score_gate
 from app.graph.state import GraphState
 from app.services import embeddings, llm, vector_store
+from app.services import web_search as tavily
 
 # Employees may only retrieve chunks marked all_employees (the HR runbook is hr_only)
 EMPLOYEE_FILTER = {"visibility": {"$eq": "all_employees"}}
@@ -14,10 +18,30 @@ def _t(node: str, **detail) -> dict:
     """One audit trace entry."""
     return {"node": node, **detail}
 
+_GREETING = re.compile(
+    r"^\s*(hi|hello|hey|thanks|thank you|thx|bye|goodbye|good (morning|afternoon|evening))\b[\s!.,?]*$",
+    re.IGNORECASE,
+)
+_EMAIL = re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+")
+_LONG_NUMBER = re.compile(r"\d{6,}")
+
+
+def sanitize_for_web(text: str) -> str:
+    """Only a cleaned question may leave the company. Mask emails and ID-like numbers."""
+    text = _EMAIL.sub("[email]", text)
+    text = _LONG_NUMBER.sub("[number]", text)
+    return text.strip()[:300]
+
 
 # ---------------------------------------------------------------- [1] route
 
 def route_question(state: GraphState) -> dict:
+    if _GREETING.match(state["question"]):
+        return {
+            "route": "chitchat",
+            "web_allowed": False,
+            "trace": [_t("route_question", route="chitchat", web_allowed=False, rule="greeting")],
+        }
     s = get_settings()
     out = llm.generate_json(
         prompts.router_prompt(state["question"]), s.router_model, system=prompts.ROUTER_SYSTEM
@@ -180,3 +204,85 @@ def insufficient_evidence(state: GraphState) -> dict:
         # The audit layer will turn this flag into a knowledge_gaps row
         "trace": [_t("insufficient_evidence", knowledge_gap=True, question=state["question"])],
     }
+
+# ---------------------------------------------------------------- [4] web search
+
+def web_search(state: GraphState) -> dict:
+    # RULE: only the sanitized question/query goes out, never internal document text
+    q = sanitize_for_web(state["query"])
+    try:
+        results = tavily.search(q, max_results=5)
+    except Exception as e:  # Tavily down or out of credits: treat as no evidence
+        return {
+            "web_results": [],
+            "trace": [_t("web_search", query=q, error=type(e).__name__)],
+        }
+    return {
+        "web_results": results,
+        "trace": [_t("web_search", query=q, urls=[r["url"] for r in results])],
+    }
+
+
+# ---------------------------------------------------------------- [5] grade web
+
+def grade_web(state: GraphState) -> dict:
+    s = get_settings()
+    results = state.get("web_results", [])
+    if not results:
+        return {
+            "web_grade": "weak",
+            "used_web": [],
+            "trace": [_t("grade_web", grade="weak", reason="no_results")],
+        }
+
+    out = llm.generate_json(
+        prompts.web_grader_prompt(state["question"], results, date.today().isoformat()),
+        s.grader_model,
+        system=prompts.WEB_GRADER_SYSTEM,
+    )
+    picked = []
+    relevant = out.get("relevant", [])
+    if isinstance(relevant, list):
+        for x in relevant:
+            if str(x).isdigit() and 1 <= int(x) <= len(results) and int(x) not in picked:
+                picked.append(int(x))
+
+    if out.get("sufficient") is True and picked:
+        used = [results[i - 1] for i in picked]
+        return {
+            "web_grade": "good",
+            "used_web": used,
+            "trace": [_t("grade_web", grade="good", used=[r["url"] for r in used])],
+        }
+    reason = "llm_unparsed" if not out else "llm_insufficient"
+    return {
+        "web_grade": "weak",
+        "used_web": [],
+        "trace": [_t("grade_web", grade="weak", reason=reason)],
+    }
+
+
+# ---------------------------------------------------------------- generate (web)
+
+def generate_from_web(state: GraphState) -> dict:
+    s = get_settings()
+    used = state["used_web"]
+    answer = llm.generate(
+        prompts.web_answer_prompt(state["question"], used),
+        s.generator_model,
+        system=prompts.WEB_ANSWER_SYSTEM,
+    )
+    if not answer:
+        return {
+            "answer": prompts.INSUFFICIENT_REPLY,
+            "source_type": "none",
+            "citations": [],
+            "trace": [_t("generate_from_web", error="empty_answer")],
+        }
+    return {
+        "answer": f"{answer}\n\n{prompts.WEB_DISCLAIMER}",  # disclaimer is added in code
+        "source_type": "web",                                # set by the branch, not the LLM
+        "citations": [{"title": r["title"], "url": r["url"]} for r in used],
+        "trace": [_t("generate_from_web", sources=[r["url"] for r in used])],
+    }
+    

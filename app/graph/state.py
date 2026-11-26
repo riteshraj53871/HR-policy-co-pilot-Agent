@@ -23,6 +23,7 @@ class GraphState(TypedDict, total=False):
     # Web branch
     web_results: list[dict]       # [{"title", "url", "content", "score"}]
     web_grade: Grade
+    used_web: list[dict]
 
     # Retry control
     retry_count: int              # rewrites done so far
@@ -42,6 +43,7 @@ def initial_state(question: str, max_retries: int) -> GraphState:
         "question": question,
         "query": question,
         "chunks": [],
+        "used_web": [],
         "used_chunks":[],
         "web_results": [],
         "citations": [],

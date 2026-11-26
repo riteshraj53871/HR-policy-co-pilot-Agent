@@ -16,6 +16,9 @@ def get_graph():
     g.add_node("retrieve_private", nodes.retrieve_private)
     g.add_node("grade_private", nodes.grade_private)
     g.add_node("generate_from_kb", nodes.generate_from_kb)
+    g.add_node("web_search", nodes.web_search)
+    g.add_node("grade_web", nodes.grade_web)
+    g.add_node("generate_from_web", nodes.generate_from_web)
     g.add_node("rewrite_query", nodes.rewrite_query)
     g.add_node("insufficient_evidence", nodes.insufficient_evidence)
 
@@ -31,8 +34,17 @@ def get_graph():
         edges.route_after_kb_grade,
         {
             "generate_from_kb": "generate_from_kb",
-            # TODO(web branch): point this at "web_search" once that node exists
-            "web_search": "insufficient_evidence",
+            "web_search": "web_search",
+            "rewrite_query": "rewrite_query",
+            "insufficient_evidence": "insufficient_evidence",
+        },
+    )
+    g.add_edge("web_search", "grade_web")
+    g.add_conditional_edges(
+        "grade_web",
+        edges.route_after_web_grade,
+        {
+            "generate_from_web": "generate_from_web",
             "rewrite_query": "rewrite_query",
             "insufficient_evidence": "insufficient_evidence",
         },
@@ -41,6 +53,7 @@ def get_graph():
 
     g.add_edge("direct_answer", END)
     g.add_edge("generate_from_kb", END)
+    g.add_edge("generate_from_web", END)
     g.add_edge("insufficient_evidence", END)
     return g.compile()
 
