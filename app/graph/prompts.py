@@ -148,7 +148,9 @@ Search results:
 {_format_web(results)}
 
 Decide whether the results contain the specific information needed to answer the question.
-- "sufficient" is true only if the results directly state what is needed AND come from a credible source (a government or official body, or a reputable organisation or news outlet). Forum posts, ads and content-farm pages do not count.
+- "sufficient" is true only if the results directly state what is needed.
+- Prefer sources published by the relevant country's own government or a major reference or news organisation. Do NOT count a page from an embassy, consulate or other foreign mission as sufficient: such pages list days when that office is closed, which mix the home country's and the host country's holidays. Forum posts, ads and content-farm pages do not count either.
+- If a source's list covers a different country or place than the question asks about, even in part, it is not sufficient.
 - If the question asks for the latest or current information and the results are clearly outdated for today's date, "sufficient" is false.
 - "relevant" lists the numbers of the results that actually help. Use [] if none do.
 
@@ -159,6 +161,9 @@ Reply in this format: {{"sufficient": true, "relevant": [1]}}'''
 
 WEB_ANSWER_SYSTEM = """You answer an employee's question about public information using ONLY the web search results provided.
 - Use only facts stated in the results. Never add dates, numbers or rules that are not written there.
+- Include only items that belong to the country or place the question asks about. If a source mixes in another country's holidays or rules (for example an embassy or consulate page that also lists the host country's days), leave those items out.
+- Do not use tables. Use short sentences or a simple list. Skip any item whose date or name is incomplete.
+- Do not say or imply that a list is complete or covers the whole year unless the source says so. If it covers only part of the year, say so.
 - Give years and dates exactly as the results state them. If sources disagree, say so.
 - This is general public information, not company policy. Do not describe it as the company's policy.
 - Be concise and friendly. Do not give legal advice.
@@ -172,6 +177,6 @@ def web_answer_prompt(question: str, results: list[dict]) -> str:
 
 # Added by code, never by the LLM, so it cannot be left out or reworded
 WEB_DISCLAIMER = (
-    "Note: this is external, public information and not company policy. "
-    "Please validate it with the HR team before relying on it."
+    "Note: this is external, public information and not company policy, and it may be incomplete "
+    "or out of date. Please validate it with the HR team before relying on it."
 )

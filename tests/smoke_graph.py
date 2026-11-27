@@ -25,4 +25,7 @@ for question, expected in CASES:
             print(f"     {t['node']}: {detail}")
     print(f"   answer: {state['answer']}")
     for c in state["citations"]:
-        print(f"   cite:   {c['title']} > {c.get('section', 'N/A')} ({c.get('score', 'N/A')})")
+        if "url" in c:
+            print(f"   cite:   {c['title']} -> {c['url']}")
+        else:
+            print(f"   cite:   {c['title']} > {c['section']} ({c['score']})")

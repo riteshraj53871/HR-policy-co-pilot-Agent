@@ -32,6 +32,12 @@ def sanitize_for_web(text: str) -> str:
     text = _LONG_NUMBER.sub("[number]", text)
     return text.strip()[:300]
 
+def clean_text(text: str) -> str:
+    """Normalise characters the LLM sometimes emits (non-breaking hyphens and spaces)."""
+    for bad, good in {"\u2011": "-", "\u2010": "-", "\u00a0": " ", "\u202f": " "}.items():
+        text = text.replace(bad, good)
+    return text
+
 
 # ---------------------------------------------------------------- [1] route
 
@@ -137,11 +143,11 @@ def grade_private(state: GraphState) -> dict:
 def generate_from_kb(state: GraphState) -> dict:
     s = get_settings()
     used = state["used_chunks"]
-    answer = llm.generate(
+    answer = clean_text(llm.generate(
         prompts.kb_answer_prompt(state["question"], used),
         s.generator_model,
         system=prompts.KB_ANSWER_SYSTEM,
-    )
+    ))
     if not answer:
         return {
             "answer": prompts.INSUFFICIENT_REPLY,
@@ -210,6 +216,8 @@ def insufficient_evidence(state: GraphState) -> dict:
 def web_search(state: GraphState) -> dict:
     # RULE: only the sanitized question/query goes out, never internal document text
     q = sanitize_for_web(state["query"])
+    if not re.search(r"\b20\d{2}\b", q):
+        q = f"{q} {date.today().year}"
     try:
         results = tavily.search(q, max_results=5)
     except Exception as e:  # Tavily down or out of credits: treat as no evidence
@@ -267,11 +275,11 @@ def grade_web(state: GraphState) -> dict:
 def generate_from_web(state: GraphState) -> dict:
     s = get_settings()
     used = state["used_web"]
-    answer = llm.generate(
+    answer = clean_text(llm.generate(
         prompts.web_answer_prompt(state["question"], used),
         s.generator_model,
         system=prompts.WEB_ANSWER_SYSTEM,
-    )
+    ))
     if not answer:
         return {
             "answer": prompts.INSUFFICIENT_REPLY,

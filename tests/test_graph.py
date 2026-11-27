@@ -171,3 +171,6 @@ def test_greeting_never_reaches_the_router_llm(monkeypatch, text):
     state = builder.ask(text)
     assert state["route"] == "chitchat"
     assert prompts.ROUTER_SYSTEM not in spy.systems
+
+def test_clean_text_normalises_odd_characters():
+    assert nodes.clean_text("Full\u2011time\u00a0staff") == "Full-time staff"
