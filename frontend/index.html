@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>HR Policy Copilot</title>
+    <!-- Modern, clean font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>HR Policy Copilot</h1>
+            <p class="tagline">Your quick, reliable HR assistant</p>
+        </header>
+        <button id="theme-toggle" class="theme-toggle" aria-label="Toggle dark theme">🌙</button>
+
+        <section class="chat-wrapper" id="chat" aria-live="polite"></section>
+
+        <section class="examples" id="examples"></section>
+
+        <form class="question-form" id="form" autocomplete="off">
+            <input class="question-input" id="input" type="text" maxlength="1000" placeholder="Ask an HR question..." aria-label="Your question" required>
+            <button class="send-button" id="send" type="submit">Send</button>
+        </form>
+
+        <footer class="footer">Answers marked "External" come from the public web, not company policy. Please do not enter personal details.</footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
