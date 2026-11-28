@@ -33,6 +33,7 @@ class Settings(BaseSettings):
 
     # Storage
     audit_db_path: str = "data/audit.db"
+    admin_token: str ="" #empty means the admin endpoints are disabled.
 
 
 @lru_cache
